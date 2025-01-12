@@ -1,9 +1,9 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { emailService } from "../services/recoveryCodeService.js";
 import { handleError } from "../utils/handleError.js";
+import { CodeValidationProps } from "../interfaces/CodeValidationProps.js";
 
-
-export async function sendRecoveryCodeController(
+export async function sendRecoveryCodeRoute(
   request: FastifyRequest<{
     Body: { email: string };
   }>,
@@ -12,9 +12,27 @@ export async function sendRecoveryCodeController(
   const { email } = request.body;
 
   try {
-    await emailService.sendRecoveryCodeService(email);
+    await emailService.sendRecoveryCode(email);
     return reply.status(200).send({
       message: "Código de recuperação enviado para o seu e-mail",
+    });
+  } catch (error) {
+    return handleError(error, reply);
+  }
+}
+
+export async function validateRecoveryCodeRoute(
+  request: FastifyRequest<{
+    Body: CodeValidationProps;
+  }>,
+  reply: FastifyReply
+) {
+  const { userEmail, recoveryCode } = request.body;
+
+  try {
+    await emailService.validateRecoveryCode({userEmail, recoveryCode});
+    return reply.status(200).send({
+      message: "Código de recuperação válido",
     });
   } catch (error) {
     return handleError(error, reply);

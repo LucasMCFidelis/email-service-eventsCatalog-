@@ -1,8 +1,13 @@
-import { generateRecoveryCode, getExpiresAt } from "../utils/recoveryUtils.js";
+import {
+  findRecoveryCode,
+  generateRecoveryCode,
+  getExpiresAt,
+} from "../utils/recoveryUtils.js";
 import { sendEmail } from "../utils/emailSender.js";
 import { prisma } from "../utils/db/prisma.js";
+import { CodeValidationProps } from "../interfaces/CodeValidationProps.js";
 
-async function sendRecoveryCodeService(email: string) {
+async function sendRecoveryCode(email: string) {
   const recoveryCode = generateRecoveryCode(6);
   const expiresAt = getExpiresAt(1); // 1 hora de validade
 
@@ -43,7 +48,43 @@ async function sendRecoveryCodeService(email: string) {
   return { status: 200, error: false };
 }
 
+async function validateRecoveryCode({
+  userEmail,
+  recoveryCode,
+}: CodeValidationProps) {
+  let recoveryRecord 
+  try {
+    // Buscar o código de recuperação no banco de dados
+    recoveryRecord = await findRecoveryCode({ userEmail, recoveryCode });
+  } catch (error) {
+    console.error("Erro ao buscar o código no banco de dados", error);
+    throw {
+      status: 500,
+      message: "Erro ao buscar o código no banco de dados",
+      error: "Erro no servidor",
+    };
+  }
+
+  if (!recoveryRecord) {
+    throw {
+      status: 400,
+      error: "Erro de validação",
+      message: "Código de recuperação inválido",
+    };
+  }
+
+  // Verificar se o código expirou
+  const currentTime = new Date();
+  if (currentTime > new Date(recoveryRecord.expiresAt)) {
+    throw {
+      status: 400,
+      error: "Erro de validação",
+      message: "Código de recuperação expirado",
+    };
+  }
+}
+
 export const emailService = {
-    sendRecoveryCodeService
-  };
-  
+  sendRecoveryCode,
+  validateRecoveryCode,
+};
