@@ -1,0 +1,97 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# # Diretórios de build/output
+# dist/
+# build/
+# out/
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# IDEs/editores
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Arquivos de ambiente
+.env
+.env.local
+.env.*.local
+
+# Cobertura de testes
+coverage/
+
+# Cache
+.cache/
+.parcel-cache/
+
+# Arquivos gerados por frameworks
+.next/
+.nuxt/
+.expo/
+
+# Relatórios
+report/
+
+# Binários
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Configurações de arquivos específicos de projetos
+*.pid
+*.seed
+*.pid.lock
+*.pid.lock*
+
+# Outros arquivos
+*.log
+*.out
+*.toc
+*.nav
+*.snm
+*.vrb
+*.blg
+*.blf
+*.synctex.gz
+*.run.xml
+*.bcf
+*.d.ts
+
+# Bower
+bower_components/
+
+# Arquivos de teste
+*.spec.js
+*.test.js
+
+# Arquivos específicos de typescript
+*.tsbuildinfo
+
+# Arquivos temporários
+*.tmp
+*.temp
+
+# SASS cache
+.sass-cache/
+
+# Arquivos de cache de texto simples
+*.cache
