@@ -9,9 +9,6 @@
     "dev": "tsx --watch --no-warnings src/server.js",
     "build": "tsup src/server.ts --out-dir dist --dts --format esm --clean && cpy src/swagger.yaml dist/ --flat"
   },
-  "prisma": {
-    "seed": "tsx src/utils/db/seed.ts"
-  },
   "keywords": [],
   "author": "",
   "license": "ISC",
