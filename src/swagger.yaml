@@ -1,0 +1,30 @@
+openapi: 3.0.0
+info:
+  title: Serviço para envio de emails
+  description: Documentação da API para envio de emails usando Swagger
+  version: 1.0.0
+servers:
+- url: http://localhost:3232
+  description: Servidor local
+- url: 
+  description: Servidor de produção
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          enum: ["Erro de validação","Erro no servidor","Erro Not Found","Erro de autorização","Erro de autenticação","Erro de Conflito"]
+          default: "Erro de validação"
+        message:
+          type: string
+          example: "Descrição do erro"
+    
+paths:
+  

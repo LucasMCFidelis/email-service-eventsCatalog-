@@ -12,10 +12,10 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 
-# # Diretórios de build/output
-# dist/
-# build/
-# out/
+# Diretórios de build/output
+dist/
+build/
+out/
 
 # Sistema operacional
 .DS_Store
