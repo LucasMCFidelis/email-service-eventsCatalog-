@@ -52,7 +52,7 @@ async function validateRecoveryCode({
   userEmail,
   recoveryCode,
 }: CodeValidationProps) {
-  let recoveryRecord 
+  let recoveryRecord;
   try {
     // Buscar o código de recuperação no banco de dados
     recoveryRecord = await findRecoveryCode({ userEmail, recoveryCode });
@@ -65,7 +65,7 @@ async function validateRecoveryCode({
     };
   }
 
-  if (!recoveryRecord) {
+  if (!recoveryRecord || recoveryCode !== recoveryRecord.recoveryCode) {
     throw {
       status: 400,
       error: "Erro de validação",

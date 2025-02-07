@@ -14,7 +14,7 @@ server
   .listen({ port: PORT, host: HOST })
   .then(() =>
     console.log(`
-        Email service rodando em http://${HOST}:${PORT}`)
+        Email service rodando em http://${HOST}:${PORT}/emails`)
   )
   .catch((error) => {
     console.error(error);
