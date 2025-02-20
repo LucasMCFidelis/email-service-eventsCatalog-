@@ -6,8 +6,11 @@ import {
 import { sendEmail } from "../utils/emailSender.js";
 import { prisma } from "../utils/db/prisma.js";
 import { CodeValidationProps } from "../interfaces/CodeValidationProps.js";
+import { schemaEmail } from "../schemas/schemaEmail.js";
 
 async function sendRecoveryCode(email: string) {
+  await schemaEmail.validateAsync({ email});
+
   const recoveryCode = generateRecoveryCode(6);
   const expiresAt = getExpiresAt(1); // 1 hora de validade
 
@@ -52,6 +55,8 @@ async function validateRecoveryCode({
   userEmail,
   recoveryCode,
 }: CodeValidationProps) {
+  await schemaEmail.validateAsync({email: userEmail})
+  
   let recoveryRecord;
   try {
     // Buscar o código de recuperação no banco de dados

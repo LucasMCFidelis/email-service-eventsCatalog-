@@ -22,7 +22,7 @@ export function handleError(error: unknown, reply: FastifyReply) {
         console.error('Erro conhecido:', error);
         return reply.status(status).send({
             error: errorType,
-            message,
+            message: message.toLowerCase(),
         });
     }
 
