@@ -9,12 +9,7 @@ const emailCollection = JSON.parse(
 newman.run(
   {
     collection: emailCollection,
-    reporters: ["cli", "html"],
-    reporter: {
-      html: {
-        export: "./src/tests/reports/emailsTest.html",
-      },
-    },
+    reporters: ["cli"],
     envVar: [
       {
         key: "email_service_url",

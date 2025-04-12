@@ -18,8 +18,7 @@
     "dotenv": "^16.4.7",
     "fastify": "^5.2.1",
     "joi": "^17.13.3",
-    "newman": "^4.6.1",
-    "newman-reporter-html": "^1.0.5",
+    "newman": "^6.2.1",
     "nodemailer": "^6.9.16",
     "prisma": "^6.2.1"
   },
