@@ -57,18 +57,7 @@ async function validateRecoveryCode({
 }: CodeValidationProps) {
   await schemaEmail.validateAsync({email: userEmail})
   
-  let recoveryRecord;
-  try {
-    // Buscar o código de recuperação no banco de dados
-    recoveryRecord = await findRecoveryCode({ userEmail, recoveryCode });
-  } catch (error) {
-    console.error("Erro ao buscar o código no banco de dados", error);
-    throw {
-      status: 500,
-      message: "Erro ao buscar o código no banco de dados",
-      error: "Erro no servidor",
-    };
-  }
+  const recoveryRecord = await findRecoveryCode({ userEmail, recoveryCode });
 
   if (!recoveryRecord || recoveryCode !== recoveryRecord.recoveryCode) {
     throw {

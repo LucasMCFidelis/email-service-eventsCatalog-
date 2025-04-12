@@ -15,11 +15,34 @@ export function getExpiresAt(hours: number): Date {
   return expiresAt;
 }
 
-export async function findRecoveryCode({ userEmail, recoveryCode }: CodeValidationProps) {
-  return prisma.recoveryCode.findFirst({
-    where: {
-      userEmail: userEmail.toLowerCase(),
-      recoveryCode,
-    },
-  });
+export async function findRecoveryCode({
+  userEmail,
+  recoveryCode,
+}: CodeValidationProps) {
+  if (!recoveryCode) {
+    throw {
+      status: 400,
+      error: "Erro de validação",
+      message: "Recovery code é obrigatório",
+    };
+  }
+
+  let code;
+  try {
+    code = prisma.recoveryCode.findFirst({
+      where: {
+        userEmail: userEmail.toLowerCase(),
+        recoveryCode,
+      },
+    });
+  } catch (error) {
+    console.error("Erro ao buscar o código no banco de dados", error);
+    throw {
+      status: 500,
+      message: "Erro ao buscar o código no banco de dados",
+      error: "Erro no servidor",
+    };
+  }
+  
+  return code;
 }
