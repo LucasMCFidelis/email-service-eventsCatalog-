@@ -4,7 +4,7 @@
 		"name": "emailService",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "36785755",
-		"_collection_link": "https://projeto-catlogo-de-eventos.postman.co/workspace/Cat%25C3%25A1logo-de-eventos~cbf513f9-9747-45cf-a397-52cda2cab29c/collection/36785755-3f34be95-3c4c-4660-b7cd-704cf7232a83?action=share&source=collection_link&creator=36785755"
+		"_collection_link": "https://projeto-catlogo-de-eventos.postman.co/workspace/Cat%C3%A1logo-de-eventos~cbf513f9-9747-45cf-a397-52cda2cab29c/collection/36785755-3f34be95-3c4c-4660-b7cd-704cf7232a83?action=share&source=collection_link&creator=36785755"
 	},
 	"item": [
 		{
@@ -397,17 +397,16 @@
 							"listen": "test",
 							"script": {
 								"exec": [
-									"pm.test(\"Status code deve ser 200\", function () {\r",
-									"    pm.response.to.have.status(200);\r",
+									"pm.test(\"Status code deve ser 400\", function () {\r",
+									"    pm.response.to.have.status(400);\r",
 									"});\r",
-									"\r",
 									"\r",
 									"pm.test(\"Deve validar a propriedade message\", function () {\r",
 									"    pm.expect(pm.response.json()).to.have.property(\"message\");\r",
 									"});\r",
 									"\r",
 									"pm.test(\"Deve validar a mensagem de retorno\", function () {\r",
-									"    pm.expect(pm.response.text()).to.include((\"Senha atualizada com sucesso\"));\r",
+									"    pm.expect(pm.response.text()).to.include((\"código de recuperação inválido\"));\r",
 									"});"
 								],
 								"type": "text/javascript",
@@ -679,7 +678,6 @@
 									"    pm.response.to.have.status(200);\r",
 									"});\r",
 									"\r",
-									"\r",
 									"pm.test(\"Deve validar a propriedade message\", function () {\r",
 									"    pm.expect(pm.response.json()).to.have.property(\"message\");\r",
 									"});\r",
@@ -742,7 +740,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n    \"userEmail\": \"lucasm241301@gmail.com\",\r\n    \"recoveryCode\": \"FhgawK\"\r\n}",
+							"raw": "{\r\n    \"userEmail\": \"lucasm241301@gmail.com\",\r\n    \"recoveryCode\": \"{{recoveryCode}}\"\r\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -768,17 +766,16 @@
 							"listen": "test",
 							"script": {
 								"exec": [
-									"pm.test(\"Status code deve ser 200\", function () {\r",
-									"    pm.response.to.have.status(200);\r",
+									"pm.test(\"Status code deve ser 400\", function () {\r",
+									"    pm.response.to.have.status(400);\r",
 									"});\r",
-									"\r",
 									"\r",
 									"pm.test(\"Deve validar a propriedade message\", function () {\r",
 									"    pm.expect(pm.response.json()).to.have.property(\"message\");\r",
 									"});\r",
 									"\r",
 									"pm.test(\"Deve validar a mensagem de retorno\", function () {\r",
-									"    pm.expect(pm.response.text()).to.include((\"Senha atualizada com sucesso\"));\r",
+									"    pm.expect(pm.response.text()).to.include((\"recovery code é obrigatório\"));\r",
 									"});"
 								],
 								"type": "text/javascript",
