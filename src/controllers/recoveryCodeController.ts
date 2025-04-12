@@ -10,9 +10,10 @@ export async function sendRecoveryCodeRoute(
   const { email } = request.body;
 
   try {
-    await emailService.sendRecoveryCode(email);
+    const response = await emailService.sendRecoveryCode(email);
     return reply.status(200).send({
       message: "Código de recuperação enviado para o seu e-mail",
+      recoveryCode: response.recoveryCode
     });
   } catch (error) {
     return handleError(error, reply);

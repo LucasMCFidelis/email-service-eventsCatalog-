@@ -48,7 +48,7 @@ async function sendRecoveryCode(email: string) {
 
   await sendEmail(email, emailSubject, emailBody);
 
-  return { status: 200, error: false };
+  return { status: 200, error: false, recoveryCode };
 }
 
 async function validateRecoveryCode({
