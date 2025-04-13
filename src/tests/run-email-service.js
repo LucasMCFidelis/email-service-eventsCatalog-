@@ -1,5 +1,18 @@
 import newman from "newman";
 import fs from "fs";
+import dotenv from "dotenv";
+
+// Carrega variáveis do .env
+dotenv.config();
+
+const environment = process.env.NODE_ENV || "development";
+const serviceUrl =
+  environment === "production"
+    ? process.env.EMAIL_SERVICE_URL_PROD
+    : process.env.EMAIL_SERVICE_URL_DEV;
+
+console.log(`[newman] Executando testes em ambiente ${environment}`);
+console.log(`[newman] URL do serviço: ${serviceUrl}`);
 
 // Carregando o arquivo JSON usando fs
 const emailCollection = JSON.parse(
@@ -13,7 +26,7 @@ newman.run(
     envVar: [
       {
         key: "email_service_url",
-        value: "https://email-service-eventscatalog.onrender.com/emails",
+        value: serviceUrl,
       },
     ],
   },

@@ -4,10 +4,12 @@
   "main": "dist/server.js",
   "type": "module",
   "scripts": {
-    "test": "node src/tests/run-email-service.js",
-    "start": "node dist/server.js",
-    "dev": "tsx --watch --no-warnings src/server.js",
-    "build": "tsup src/server.ts --out-dir dist --dts --format esm --clean && cpy src/swagger.yaml dist/ --flat"
+    "test:dev": "cross-env NODE_ENV=development node src/tests/run-email-service.js",
+    "test:prod": "cross-env NODE_ENV=production node src/tests/run-email-service.js",
+    "start": "cross-env NODE_ENV=production node dist/server.js",
+    "start:dev": "cross-env NODE_ENV=development node dist/server.js",
+    "dev": "cross-env NODE_ENV=development tsx --watch --no-warnings src/server.js",
+    "build": "cross-env NODE_ENV=production tsup src/server.ts --out-dir dist --dts --format esm --clean && cpy src/swagger.yaml dist/ --flat"
   },
   "keywords": [],
   "author": "",
@@ -26,6 +28,7 @@
     "@types/node": "^22.10.5",
     "@types/nodemailer": "^6.4.17",
     "cpy-cli": "^5.0.0",
+    "cross-env": "^7.0.3",
     "tsup": "^8.3.5",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3"
