@@ -7,9 +7,20 @@ import { sendEmail } from "../utils/emailSender.js";
 import { prisma } from "../utils/db/prisma.js";
 import { CodeValidationProps } from "../interfaces/CodeValidationProps.js";
 import { schemaEmail } from "../schemas/schemaEmail.js";
+import axios from "axios";
+import { resolveServiceUrl } from "../utils/resolveServiceUrl.js";
+import { handleAxiosError } from "../utils/handleAxiosError.js";
+
+const userServiceUrl = resolveServiceUrl("USER")
 
 async function sendRecoveryCode(email: string) {
   await schemaEmail.validateAsync({ email});
+
+  try {
+    await axios.get(`${userServiceUrl}/users?userEmail=${email}`)
+  } catch (error) {
+    handleAxiosError(error)
+  }
 
   const recoveryCode = generateRecoveryCode(6);
   const expiresAt = getExpiresAt(1); // 1 hora de validade

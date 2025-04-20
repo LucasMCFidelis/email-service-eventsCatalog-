@@ -29,7 +29,7 @@ export async function findRecoveryCode({
 
   let code;
   try {
-    code = prisma.recoveryCode.findFirst({
+    code = await prisma.recoveryCode.findFirst({
       where: {
         userEmail: userEmail.toLowerCase(),
         recoveryCode,
