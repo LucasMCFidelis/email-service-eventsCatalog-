@@ -1,7 +1,9 @@
-describe("Email Service", () => {
-  it("Enviar recovery code com sucesso", () => {
+describe("Enviar recovery code", () => {
+  const userEmail = Cypress.env("USER_EMAIL_TEST")
+
+  it("com sucesso", () => {
     cy.api("POST", "/send-recovery-code", {
-      email: "lucasm241301@gmail.com",
+      email: userEmail,
     }).then((res) => {
       expect(res.status).to.eq(200);
       expect(res.body).to.have.property("recoveryCode");
@@ -9,7 +11,7 @@ describe("Email Service", () => {
     });
   });
 
-  it("Enviar recovery code para email inválido", () => {
+  it("para email inválido", () => {
     cy.api({
       method: "POST",
       url: "/send-recovery-code",
@@ -24,7 +26,7 @@ describe("Email Service", () => {
     });
   });
 
-  it("Enviar recovery code para email não cadastrado", () => {
+  it("para email não cadastrado", () => {
     cy.api({
       method: "POST",
       url: "/send-recovery-code",
@@ -41,7 +43,7 @@ describe("Email Service", () => {
     });
   });
 
-  it("Enviar recovery code sem passar o email", () => {
+  it("sem passar o email", () => {
     cy.api({
       method: "POST",
       url: "/send-recovery-code",

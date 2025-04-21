@@ -1,4 +1,4 @@
-describe("Validação de Recovery Code - ", () => {
+describe("Validação de Recovery Code", () => {
   const userEmail = Cypress.env("USER_EMAIL_TEST")
 
   before(() => {

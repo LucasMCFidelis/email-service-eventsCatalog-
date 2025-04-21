@@ -95,3 +95,6 @@ bower_components/
 
 # Arquivos de cache de texto simples
 *.cache
+
+/cypress/screenshots
+/cypress/reports
