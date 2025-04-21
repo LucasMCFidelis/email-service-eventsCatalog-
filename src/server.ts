@@ -1,7 +1,15 @@
 import Fastify from "fastify";
 import { recoveryCodeRoutes } from "./routes/recoveryCodeRoutes.js";
+import cors from "@fastify/cors"
 
 const server = Fastify();
+
+// Configurar o CORS
+server.register(cors, {
+  origin: "*", // Libera totalmente para testes
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+  credentials: true,
+});
 
 // Registrar rotas de usuários com prefixo
 server.register(recoveryCodeRoutes, { prefix: "/emails" });
