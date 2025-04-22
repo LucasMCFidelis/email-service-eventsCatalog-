@@ -14,6 +14,7 @@ import { handleAxiosError } from "../utils/handleAxiosError.js";
 const userServiceUrl = resolveServiceUrl("USER")
 
 async function sendRecoveryCode(email: string) {
+  email.toLowerCase()
   await schemaEmail.validateAsync({ email});
 
   try {
@@ -28,9 +29,9 @@ async function sendRecoveryCode(email: string) {
   try {
     // Atualiza o usuário no banco de dados
     await prisma.recoveryCode.upsert({
-      where: { userEmail: email.toLowerCase() },
+      where: { userEmail: email },
       update: { recoveryCode, expiresAt },
-      create: { userEmail: email.toLowerCase(), recoveryCode, expiresAt },
+      create: { userEmail: email, recoveryCode, expiresAt },
     });
   } catch (error) {
     console.error("Erro ao salvar o código no banco de dados", error);
@@ -66,9 +67,10 @@ async function validateRecoveryCode({
   userEmail,
   recoveryCode,
 }: CodeValidationProps) {
+  userEmail.toLowerCase()
   await schemaEmail.validateAsync({email: userEmail})
   
-  const recoveryRecord = await findRecoveryCode({ userEmail: userEmail.toLowerCase(), recoveryCode });
+  const recoveryRecord = await findRecoveryCode({ userEmail, recoveryCode });
 
   if (!recoveryRecord || recoveryCode !== recoveryRecord.recoveryCode) {
     throw {
