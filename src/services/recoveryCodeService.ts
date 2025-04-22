@@ -28,9 +28,9 @@ async function sendRecoveryCode(email: string) {
   try {
     // Atualiza o usuário no banco de dados
     await prisma.recoveryCode.upsert({
-      where: { userEmail: email },
+      where: { userEmail: email.toLowerCase() },
       update: { recoveryCode, expiresAt },
-      create: { userEmail: email, recoveryCode, expiresAt },
+      create: { userEmail: email.toLowerCase(), recoveryCode, expiresAt },
     });
   } catch (error) {
     console.error("Erro ao salvar o código no banco de dados", error);
@@ -68,7 +68,7 @@ async function validateRecoveryCode({
 }: CodeValidationProps) {
   await schemaEmail.validateAsync({email: userEmail})
   
-  const recoveryRecord = await findRecoveryCode({ userEmail, recoveryCode });
+  const recoveryRecord = await findRecoveryCode({ userEmail: userEmail.toLowerCase(), recoveryCode });
 
   if (!recoveryRecord || recoveryCode !== recoveryRecord.recoveryCode) {
     throw {
