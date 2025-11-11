@@ -11,16 +11,17 @@ import axios from "axios";
 import { resolveServiceUrl } from "../utils/resolveServiceUrl.js";
 import { handleAxiosError } from "../utils/handleAxiosError.js";
 
-const userServiceUrl = resolveServiceUrl("USER")
+const userServiceUrl = resolveServiceUrl("USER");
+console.log(userServiceUrl);
 
 async function sendRecoveryCode(email: string) {
-  email.toLowerCase()
-  await schemaEmail.validateAsync({ email});
+  email.toLowerCase();
+  await schemaEmail.validateAsync({ email });
 
   try {
-    await axios.get(`${userServiceUrl}/users?userEmail=${email}`)
+    await axios.get(`${userServiceUrl}/users?userEmail=${email}`);
   } catch (error) {
-    handleAxiosError(error)
+    handleAxiosError(error);
   }
 
   const recoveryCode = generateRecoveryCode(6);
@@ -58,7 +59,15 @@ async function sendRecoveryCode(email: string) {
       </div>
     `;
 
-  await sendEmail(email, emailSubject, emailBody);
+  try {
+    await sendEmail(email, emailSubject, emailBody);
+  } catch (error) {
+    console.error("Erro ao enviar email", error);
+    throw {
+      status: 500,
+      message: "Não foi possível enviar o email",
+    };
+  }
 
   return { status: 200, error: false, recoveryCode };
 }
@@ -67,9 +76,9 @@ async function validateRecoveryCode({
   userEmail,
   recoveryCode,
 }: CodeValidationProps) {
-  userEmail.toLowerCase()
-  await schemaEmail.validateAsync({email: userEmail})
-  
+  userEmail.toLowerCase();
+  await schemaEmail.validateAsync({ email: userEmail });
+
   const recoveryRecord = await findRecoveryCode({ userEmail, recoveryCode });
 
   if (!recoveryRecord || recoveryCode !== recoveryRecord.recoveryCode) {

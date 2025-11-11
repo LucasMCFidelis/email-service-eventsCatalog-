@@ -9,7 +9,7 @@ export function handleAxiosError(error: unknown) {
     throw {
       status: statusCode,
       message: errorMessage,
-      error: "Erro  inesperado",
+      error: "Erro inesperado",
     };
   }
 }
