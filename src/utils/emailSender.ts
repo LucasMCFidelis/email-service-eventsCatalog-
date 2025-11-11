@@ -4,7 +4,8 @@ import SMTPTransport from "nodemailer/lib/smtp-transport";
 export async function sendEmail(to: string, subject: string, html: string) {
   const transporter = nodemailer.createTransport({
     host: process.env.MAIL_HOST,
-    port: process.env.MAIL_PORT,
+    port: Number(process.env.MAIL_PORT),
+    secure: true,
     auth: {
       user: process.env.MAIL_USER,
       pass: process.env.MAIL_PASS,
@@ -20,3 +21,4 @@ export async function sendEmail(to: string, subject: string, html: string) {
     throw new Error("Erro ao enviar e-mail");
   }
 }
+
