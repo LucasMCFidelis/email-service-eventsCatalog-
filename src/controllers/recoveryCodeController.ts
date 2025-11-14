@@ -13,7 +13,7 @@ export async function sendRecoveryCodeRoute(
     const response = await emailService.sendRecoveryCode(email);
     return reply.status(200).send({
       message: "Código de recuperação enviado para o seu e-mail",
-      ...(process.env.NODE_ENV === "test" && {
+      ...(process.env.NODE_ENV !== "production" && {
         recoveryCode: response.recoveryCode,
       }),
     });
