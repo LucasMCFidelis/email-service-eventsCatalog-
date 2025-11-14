@@ -15,8 +15,8 @@ const userServiceUrl = resolveServiceUrl("USER");
 console.log(userServiceUrl);
 
 async function sendRecoveryCode(email: string) {
-  email.toLowerCase();
   await schemaEmail.validateAsync({ email });
+  email.toLowerCase();
 
   try {
     await axios.get(`${userServiceUrl}/users?userEmail=${email}`);
@@ -80,8 +80,8 @@ async function validateRecoveryCode({
   userEmail,
   recoveryCode,
 }: CodeValidationProps) {
-  userEmail.toLowerCase();
   await schemaEmail.validateAsync({ email: userEmail });
+  userEmail.toLowerCase();
 
   const recoveryRecord = await findRecoveryCode({ userEmail, recoveryCode });
 
