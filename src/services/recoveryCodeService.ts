@@ -69,7 +69,11 @@ async function sendRecoveryCode(email: string) {
     };
   }
 
-  return { status: 200, error: false, recoveryCode };
+  return {
+    status: 200,
+    error: false,
+    ...(process.env.NODE_ENV === "test" && { recoveryCode }),
+  };
 }
 
 async function validateRecoveryCode({

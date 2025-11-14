@@ -4,10 +4,8 @@
   "main": "dist/server.js",
   "type": "module",
   "scripts": {
-    "test:dev": "cross-env NODE_ENV=development npx cypress run",
-    "test:prod": "cross-env NODE_ENV=production npx cypress run",
-    "test:dev:open": "cross-env NODE_ENV=development npx cypress open",
-    "test:prod:open": "cross-env NODE_ENV=production npx cypress open",
+    "test": "cross-env NODE_ENV=test npx cypress run",
+    "test:open": "cross-env NODE_ENV=test npx cypress open",
     "start": "cross-env NODE_ENV=production node dist/server.js",
     "start:dev": "cross-env NODE_ENV=development node dist/server.js",
     "dev": "cross-env NODE_ENV=development tsx --watch --no-warnings src/server.js",
