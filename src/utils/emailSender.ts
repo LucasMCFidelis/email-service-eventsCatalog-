@@ -1,22 +1,30 @@
-import { Resend } from "resend";
+import axios from "axios";
+import { handleAxiosError } from "./handleAxiosError.js";
 
 export async function sendEmail(to: string, subject: string, html: string) {
-  const RESEND_API_KEY = process.env.RESEND_API_KEY;
-  const MAIL_USER = process.env.MAIL_USER;
+  const MAIL_SERVER_ENDPOINT = process.env.MAIL_SERVER_ENDPOINT;
+  const API_MAIL_KEY = process.env.API_MAIL_KEY;
 
-  if (!RESEND_API_KEY) {
-    throw new Error("RESEND_API_KEY not found");
-  }
-  if (!MAIL_USER) {
-    throw new Error("MAIL_USER not found");
+  if (!MAIL_SERVER_ENDPOINT || !API_MAIL_KEY) {
+    throw new Error("API_MAIL_KEY or MAIL_SERVER_ENDPOINT not found");
   }
 
-  const resend = new Resend(RESEND_API_KEY);
-
-  return await resend.emails.send({
-    from: MAIL_USER,
-    to: [to],
-    subject,
-    html,
-  });
+  try {
+    await axios.post(
+      MAIL_SERVER_ENDPOINT,
+      {
+        to,
+        subject,
+        html,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${API_MAIL_KEY}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+  } catch (error) {
+    handleAxiosError(error);
+  }
 }

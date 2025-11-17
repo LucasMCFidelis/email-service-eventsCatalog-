@@ -59,15 +59,7 @@ async function sendRecoveryCode(email: string) {
       </div>
     `;
 
-  try {
-    await sendEmail(email, emailSubject, emailBody);
-  } catch (error) {
-    console.error("Erro ao enviar email", error);
-    throw {
-      status: 500,
-      message: "Não foi possível enviar o email",
-    };
-  }
+  await sendEmail(email, emailSubject, emailBody);
 
   return {
     status: 200,
