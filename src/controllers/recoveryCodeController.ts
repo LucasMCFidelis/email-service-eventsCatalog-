@@ -8,9 +8,15 @@ export async function sendRecoveryCodeRoute(
   reply: FastifyReply
 ) {
   const { email } = request.body;
+  const scenarioHeader = request.headers["x-mock-scenario"];
+
+  const scenario =
+    process.env.MOCK_USER === "true" && typeof scenarioHeader === "string"
+      ? scenarioHeader
+      : undefined;
 
   try {
-    const response = await emailService.sendRecoveryCode(email);
+    const response = await emailService.sendRecoveryCode(email, scenario);
     return reply.status(200).send({
       message: "Código de recuperação enviado para o seu e-mail",
       ...(process.env.NODE_ENV !== "production" && {

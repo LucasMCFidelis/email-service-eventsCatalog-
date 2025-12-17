@@ -2,6 +2,11 @@ import axios from "axios";
 import { handleAxiosError } from "./handleAxiosError.js";
 
 export async function sendEmail(to: string, subject: string, html: string) {
+  if (process.env.MOCK_EMAIL === "true") {
+    console.log("📧 Mock email enviado");
+    return;
+  }
+
   const MAIL_SERVER_ENDPOINT = process.env.MAIL_SERVER_ENDPOINT;
   const API_MAIL_KEY = process.env.API_MAIL_KEY;
 

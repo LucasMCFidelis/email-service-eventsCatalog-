@@ -14,13 +14,24 @@ import { handleAxiosError } from "../utils/handleAxiosError.js";
 const userServiceUrl = resolveServiceUrl("USER");
 console.log(userServiceUrl);
 
-async function sendRecoveryCode(email: string) {
+async function sendRecoveryCode(email: string, scenario?: string) {
   await schemaEmail.validateAsync({ email });
   email.toLowerCase();
 
   try {
-    await axios.get(`${userServiceUrl}/users?userEmail=${email}`);
+    await axios.get(
+      `${userServiceUrl}/users?userEmail=${email}`,
+      scenario
+        ? {
+            headers: {
+              "x-mock-scenario": scenario,
+            },
+          }
+        : {}
+    );
   } catch (error) {
+    console.log(error);
+    
     handleAxiosError(error);
   }
 
