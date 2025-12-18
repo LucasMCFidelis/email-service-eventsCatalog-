@@ -5,6 +5,7 @@ on:
 
 jobs:
   security-smoke:
+    environment: eventsCatalog
     runs-on: ubuntu-latest
 
     services:
@@ -66,7 +67,7 @@ jobs:
           NODE_ENV: production
           MOCK_USER: "true"
           MOCK_EMAIL: "true"
-          USER_SERVICE_URL_DEV: http://localhost:8089
+          USER_SERVICE_URL_PROD: http://localhost:8089
           DATABASE_URL_EMAIL: postgresql://test:test@localhost:5432/email_test
         run: |
           npm run start &
@@ -75,6 +76,15 @@ jobs:
       # 6️⃣ Run API tests
       - name: Install Newman
         run: npm install -g newman newman-reporter-html
+
+      - name: Check EMAIL_SECURITY_TEST is set
+        run: |
+          if [ -z "${{ secrets.EMAIL_SECURITY_TEST }}" ]; then
+            echo "EMAIL_SECURITY_TEST is NOT set"
+            exit 1
+          else
+            echo "EMAIL_SECURITY_TEST is set"
+          fi
 
       - name: Run API tests
         run: |
