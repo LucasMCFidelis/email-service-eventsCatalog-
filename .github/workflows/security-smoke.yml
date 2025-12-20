@@ -8,6 +8,7 @@ jobs:
     uses: ./.github/workflows/email-service-base.yml
     with:
       node_env: production
+      script_start_service: npm run start
       user_service_url: http://localhost:8089
       folder: security-smoke
       environment_json_file: production-like.environment.json
