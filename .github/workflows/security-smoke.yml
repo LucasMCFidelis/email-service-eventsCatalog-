@@ -6,6 +6,8 @@ on:
 jobs:
   security-smoke:
     uses: ./.github/workflows/email-service-base.yml
+    secrets:
+      EMAIL_SECURITY_TEST: ${{ secrets.EMAIL_SECURITY_TEST }}
     with:
       node_env: production
       script_start_service: npm run start
