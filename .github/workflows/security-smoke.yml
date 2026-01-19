@@ -2,9 +2,34 @@ name: emailService SECURITY_SMOKE
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "0 2 * * *" # Every day at 2 AM UTC
 
 jobs:
+  check-commits:
+    runs-on: ubuntu-latest
+    outputs:
+      has_commits: ${{ steps.check.outputs.has_commits }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check commits in last 24 hours
+        id: check
+        run: |
+          COMMITS=$(git log --since="24 hours ago" --oneline | wc -l)
+          if [ "$COMMITS" -gt 0 ]; then
+            echo "has_commits=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_commits=false" >> $GITHUB_OUTPUT
+          fi
+
   security-smoke:
+    needs: check-commits
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      needs.check-commits.outputs.has_commits == 'true'
     uses: ./.github/workflows/email-service-base.yml
     secrets:
       EMAIL_SECURITY_TEST: ${{ secrets.EMAIL_SECURITY_TEST }}
