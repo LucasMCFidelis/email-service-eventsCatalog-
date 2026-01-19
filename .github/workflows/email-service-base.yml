@@ -18,9 +18,14 @@ on:
       environment_json_file:
         required: true
         type: string
+      execute_deploy:
+        required: false
+        type: boolean
     secrets:
       EMAIL_SECURITY_TEST:
         required: false
+      RENDER_DEPLOY_HOOK_URL:
+        required: true
 
 jobs:
   setup:
@@ -88,6 +93,13 @@ jobs:
       - name: Install Newman
         run: npm install -g newman newman-reporter-html
 
+      - name: Run Functional Smoke tests
+        run: |
+          newman run \
+            api-tests/postman/collections/36785755-3f34be95-3c4c-4660-b7cd-704cf7232a83.json \
+            --folder functional-smoke \
+            -e api-tests/postman/environments/${{ inputs.environment_json_file }} \
+
       - name: Run API tests
         run: |
           newman run \
@@ -97,6 +109,13 @@ jobs:
             --env-var "emailSecurityTest=${{ secrets.EMAIL_SECURITY_TEST }}" \
             --reporters cli,html \
             --reporter-html-export relatorio.html
+
+      - name: Deploy
+        if: inputs.execute_deploy == true
+        env:
+          deploy_url: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          curl "$deploy_url"
 
       - name: Upload report
         uses: actions/upload-artifact@v4

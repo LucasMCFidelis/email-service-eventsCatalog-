@@ -14,3 +14,4 @@ jobs:
       user_service_url: http://localhost:8089
       folder: security-smoke
       environment_json_file: production-like.environment.json
+      execute_deploy: false

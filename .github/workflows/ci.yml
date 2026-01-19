@@ -15,3 +15,4 @@ jobs:
       user_service_url: http://localhost:8089
       folder: recovery
       environment_json_file: ci.environment.json
+      execute_deploy: true
