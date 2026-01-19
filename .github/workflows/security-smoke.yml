@@ -8,6 +8,7 @@ jobs:
     uses: ./.github/workflows/email-service-base.yml
     secrets:
       EMAIL_SECURITY_TEST: ${{ secrets.EMAIL_SECURITY_TEST }}
+      RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
     with:
       node_env: production
       script_start_service: npm run start
