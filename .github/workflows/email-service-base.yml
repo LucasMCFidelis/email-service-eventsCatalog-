@@ -91,24 +91,24 @@ jobs:
           sleep 5
 
       - name: Install Newman
-        run: npm install -g newman newman-reporter-html
+        run: npm install -g newman newman-reporter-htmlextra
 
       - name: Run Functional Smoke tests
         run: |
           newman run \
-            api-tests/postman/collections/36785755-3f34be95-3c4c-4660-b7cd-704cf7232a83.json \
+            api-tests/postman/collections/email-service.postman_collection.json \
             --folder functional-smoke \
             -e api-tests/postman/environments/${{ inputs.environment_json_file }} \
 
       - name: Run API tests
         run: |
           newman run \
-            api-tests/postman/collections/36785755-3f34be95-3c4c-4660-b7cd-704cf7232a83.json \
+            api-tests/postman/collections/email-service.postman_collection.json \
             --folder ${{ inputs.folder }} \
             -e api-tests/postman/environments/${{ inputs.environment_json_file }} \
             --env-var "emailSecurityTest=${{ secrets.EMAIL_SECURITY_TEST }}" \
-            --reporters cli,html \
-            --reporter-html-export relatorio.html
+            --reporters cli,htmlextra \
+            --reporter-htmlextra-export relatorio.html
 
       - name: Deploy
         if: inputs.execute_deploy == true
