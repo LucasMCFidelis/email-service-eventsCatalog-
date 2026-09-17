@@ -76,7 +76,7 @@ jobs:
         run: |
           docker run -d \
             -p 8089:8080 \
-            -v ${{ github.workspace }}/user-mock/postman/wiremock:/home/wiremock \
+            -v ${{ github.workspace }}/user-mock/wiremock:/home/wiremock \
             wiremock/wiremock
 
       - name: Start emailService
