@@ -1,0 +1,114 @@
+name: email-service
+
+# Modos (via profiles):
+#   test: docker compose --profile test up --build --exit-code-from tests   (o mesmo comando roda na CI)
+#
+# Convenção (igual nos 3 repos): app-* e db-* = ESTE serviço; o resto = dependências.
+# Todo serviço/mock responde pelo mesmo hostname em qualquer modo
+# (user-service, auth-service, email-service). Porta interna de todos: 8080.
+
+x-postgres: &postgres
+  image: postgres:15-alpine
+  healthcheck:
+    test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+    interval: 5s
+    timeout: 3s
+    retries: 10
+
+x-own-db-env: &own-db-env
+  POSTGRES_DB: ${DB_NAME:-email_test}
+  POSTGRES_USER: ${DB_USER:-test}
+  POSTGRES_PASSWORD: ${DB_PASSWORD:-test}
+
+x-app-env: &app-env
+  DATABASE_URL_EMAIL: postgresql://${DB_USER:-test}:${DB_PASSWORD:-test}@email-db:5432/${DB_NAME:-email_test}
+  USER_SERVICE_URL_DEV: http://user-service:8080
+  MOCK_USER: true
+  MOCK_EMAIL: true
+
+services:
+  # ============================ TEST ============================
+  # email-service REAL (mesma imagem de prod) + banco descartável.
+  # userService = WireMock. Testes = Newman (coleção em outro repo).
+  db-test:
+    <<: *postgres
+    profiles: [test]
+    environment: *own-db-env
+    tmpfs: [/var/lib/postgresql/data]
+    networks:
+      default:
+        aliases: [email-db]
+
+  # Job único: migrations e seed em sequência (sem corrida) antes do app subir.
+  migrate-test:
+    profiles: [test]
+    build:
+      context: .
+      target: migrate
+    environment:
+      <<: [*app-env]
+    depends_on:
+      db-test: { condition: service_healthy }
+
+  app-test:
+    profiles: [test]
+    build:
+      context: .
+      target: prod
+    environment:
+      <<: *app-env
+      NODE_ENV: development
+      START_SCRIPT: "start:dev"
+    ports: ["8081:8080"]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('net').connect(8080, '127.0.0.1').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))"
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    depends_on:
+      migrate-test: { condition: service_completed_successfully }
+      user-service-mock: { condition: service_started }
+    networks:
+      default:
+        aliases: [email-service]
+
+  user-service-mock:
+    profiles: [test]
+    build:
+      context: ${USER_MOCK_GIT:-https://github.com/LucasMCFidelis/collectionTestApiUserService.git#main}
+      dockerfile: docker/mock.Dockerfile
+    networks:
+      default:
+        aliases: [user-service]
+  
+  tests-functional:
+    profiles: [test]
+    build:
+      context: ${API_TESTS_GIT:-https://github.com/LucasMCFidelis/collectionTestApiEmailService.git#main}
+      dockerfile: docker/tests-runner.Dockerfile
+    volumes:
+      - ./reports:/etc/newman/reports
+    command: 
+      - run
+      - postman/collections/email-service.postman_collection.json
+      - -e
+      - postman/environments/ci.environment.json
+      - --folder
+      - functional-smoke
+      - --folder
+      - recovery
+      - --reporters
+      - cli,htmlextra
+      - --reporter-htmlextra-export
+      - reports/functional.html
+    depends_on: { app-test: { condition: service_healthy } }
+
+volumes:
+  email-db-data:
