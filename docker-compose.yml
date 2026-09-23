@@ -1,11 +1,13 @@
 name: email-service
 
 # Modos (via profiles):
-#   test: docker compose --profile test up --build --exit-code-from tests   (o mesmo comando roda na CI)
+#   test     : docker compose --profile test up --build --exit-code-from tests-functional
+#   like-prod: START_SCRIPT=start docker compose --profile like-prod up --build --exit-code-from tests-security
 #
-# Convenção (igual nos 3 repos): app-* e db-* = ESTE serviço; o resto = dependências.
-# Todo serviço/mock responde pelo mesmo hostname em qualquer modo
-# (user-service, auth-service, email-service). Porta interna de todos: 8080.
+# db, migrate, app e user-service-mock pertencem aos DOIS profiles (profiles: [test, like-prod]):
+# são o mesmo ambiente de teste em ambos os casos. Só muda o START_SCRIPT (via variável de shell,
+# com default start:dev) e qual runner de teste roda ao final. Como é literalmente o mesmo serviço
+# em qualquer um dos dois modos, não há conflito de alias mesmo trocando de profile entre execuções.
 
 x-postgres: &postgres
   image: postgres:15-alpine
@@ -20,45 +22,45 @@ x-own-db-env: &own-db-env
   POSTGRES_USER: ${DB_USER:-test}
   POSTGRES_PASSWORD: ${DB_PASSWORD:-test}
 
+# USER_SERVICE_URL_DEV e USER_SERVICE_URL_PROD apontam para o mesmo mock: resolveServiceUrl()
+# só lê uma das duas, conforme o NODE_ENV que o START_SCRIPT ativo definir via cross-env.
 x-app-env: &app-env
   DATABASE_URL_EMAIL: postgresql://${DB_USER:-test}:${DB_PASSWORD:-test}@email-db:5432/${DB_NAME:-email_test}
   USER_SERVICE_URL_DEV: http://user-service:8080
+  USER_SERVICE_URL_PROD: http://user-service:8080
   MOCK_USER: true
   MOCK_EMAIL: true
 
 services:
-  # ============================ TEST ============================
-  # email-service REAL (mesma imagem de prod) + banco descartável.
-  # userService = WireMock. Testes = Newman (coleção em outro repo).
-  db-test:
+  db:
     <<: *postgres
-    profiles: [test]
+    profiles: [test, like-prod]
     environment: *own-db-env
     tmpfs: [/var/lib/postgresql/data]
     networks:
       default:
         aliases: [email-db]
 
-  # Job único: migrations e seed em sequência (sem corrida) antes do app subir.
-  migrate-test:
-    profiles: [test]
+  # Migrations em sequência (sem corrida) antes do app subir.
+  migrate:
+    profiles: [test, like-prod]
     build:
       context: .
       target: migrate
-    environment:
-      <<: [*app-env]
+    environment: *app-env
     depends_on:
-      db-test: { condition: service_healthy }
+      db: { condition: service_healthy }
 
-  app-test:
-    profiles: [test]
+  app:
+    profiles: [test, like-prod]
     build:
       context: .
       target: prod
     environment:
       <<: *app-env
-      NODE_ENV: development
-      START_SCRIPT: "start:dev"
+      # test        -> start:dev (NODE_ENV=development, *_DEV, recovery code visível)
+      # like-prod   -> start     (NODE_ENV=production,  *_PROD, recovery code oculto)
+      START_SCRIPT: ${START_SCRIPT:-start:dev}
     ports: ["8081:8080"]
     healthcheck:
       test:
@@ -73,21 +75,22 @@ services:
       retries: 20
       start_period: 10s
     depends_on:
-      migrate-test: { condition: service_completed_successfully }
+      migrate: { condition: service_completed_successfully }
       user-service-mock: { condition: service_started }
     networks:
       default:
         aliases: [email-service]
 
   user-service-mock:
-    profiles: [test]
+    profiles: [test, like-prod]
     build:
       context: ${USER_MOCK_GIT:-https://github.com/LucasMCFidelis/collectionTestApiUserService.git#main}
       dockerfile: docker/mock.Dockerfile
     networks:
       default:
         aliases: [user-service]
-  
+
+  # ---- runners de teste: exclusivos de cada profile ----
   tests-functional:
     profiles: [test]
     build:
@@ -95,7 +98,7 @@ services:
       dockerfile: docker/tests-runner.Dockerfile
     volumes:
       - ./reports:/etc/newman/reports
-    command: 
+    command:
       - run
       - postman/collections/email-service.postman_collection.json
       - -e
@@ -108,7 +111,28 @@ services:
       - cli,htmlextra
       - --reporter-htmlextra-export
       - reports/functional.html
-    depends_on: { app-test: { condition: service_healthy } }
+    depends_on:
+      app: { condition: service_healthy }
 
-volumes:
-  email-db-data:
+  tests-security:
+    profiles: [like-prod]
+    build:
+      context: ${API_TESTS_GIT:-https://github.com/LucasMCFidelis/collectionTestApiEmailService.git#main}
+      dockerfile: docker/tests-runner.Dockerfile
+    volumes:
+      - ./reports:/etc/newman/reports
+    command:
+      - run
+      - postman/collections/email-service.postman_collection.json
+      - -e
+      - postman/environments/ci.environment.json
+      - --folder
+      - security-smoke
+      - --env-var
+      - emailSecurityTest=${EMAIL_SECURITY_TEST:-}
+      - --reporters
+      - cli,htmlextra
+      - --reporter-htmlextra-export
+      - reports/security.html
+    depends_on:
+      app: { condition: service_healthy }
