@@ -1,4 +1,4 @@
-name: emailService CI
+name: EmailService CI
 
 on:
   pull_request:
@@ -7,14 +7,92 @@ on:
     branches: [main]
 
 jobs:
-  ci:
-    uses: ./.github/workflows/email-service-base.yml
-    secrets: 
-      RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
-    with:
-      node_env: development
-      script_start_service: npm run start:dev
-      user_service_url: http://localhost:8089
-      folder: recovery
-      environment_json_file: ci.environment.json
-      execute_deploy: true
+  test:
+    environment: eventsCatalog
+    runs-on: ubuntu-latest
+    steps:
+      # 1️⃣ Checkout emailService
+      - name: Checkout emailService
+        uses: actions/checkout@v4
+
+      # 2️⃣ Subir ambiente de teste e rodar testes funcionais
+      - name: Setup and run tests
+        run: docker compose --profile test up --build --exit-code-from tests-functional
+
+      # 3️⃣ Salvar logs do compose e relatório do Newman
+      - name: Collect compose logs
+        if: failure()
+        run: docker compose --profile test logs --no-color > compose-test.log
+
+      - name: Save Newman report (functional)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorio-newman-functional
+          path: reports/functional.html
+          if-no-files-found: warn
+
+      - name: Save compose logs (test)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compose-logs-test
+          path: compose-test.log
+
+      # 4️⃣ Parar e remover containers
+      - name: Stop and remove containers
+        if: always()
+        run: |
+          docker compose --profile test down -v
+
+  security-smoke:
+    environment: eventsCatalog
+    runs-on: ubuntu-latest
+    steps:
+      # 1️⃣ Checkout emailService
+      - name: Checkout emailService
+        uses: actions/checkout@v4
+
+      # 2️⃣ Subir ambiente simulando prod e rodar testes de segurança
+      - name: Security smoke (compose --profile like-prod)
+        env:
+          START_SCRIPT: start
+          EMAIL_SECURITY_TEST: ${{ secrets.EMAIL_SECURITY_TEST }}
+        run: docker compose --profile like-prod up --build --exit-code-from tests-security
+
+      # 3️⃣ Salvar logs do compose e relatório do Newman
+      - name: Collect compose logs
+        if: failure()
+        run: docker compose --profile like-prod logs --no-color > compose-like-prod.log
+
+      - name: Save Newman report (security)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorio-newman-security
+          path: reports/security.html
+          if-no-files-found: warn
+
+      - name: Save compose logs (like-prod)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compose-logs-like-prod
+          path: compose-like-prod.log
+
+      # 4️⃣ Parar e remover containers
+      - name: Stop and remove containers
+        if: always()
+        run: |
+          docker compose --profile like-prod down -v
+
+  deploy:
+    needs: [test, security-smoke]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: eventsCatalog
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render deploy hook
+        env:
+          deploy_url: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: curl "$deploy_url"
