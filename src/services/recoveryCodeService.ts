@@ -12,7 +12,6 @@ import { resolveServiceUrl } from "../utils/resolveServiceUrl.js";
 import { handleAxiosError } from "../utils/handleAxiosError.js";
 
 const userServiceUrl = resolveServiceUrl("USER");
-console.log(userServiceUrl);
 
 async function sendRecoveryCode(email: string, scenario?: string) {
   await schemaEmail.validateAsync({ email });
@@ -30,8 +29,6 @@ async function sendRecoveryCode(email: string, scenario?: string) {
         : {}
     );
   } catch (error) {
-    console.log(error);
-    
     handleAxiosError(error);
   }
 

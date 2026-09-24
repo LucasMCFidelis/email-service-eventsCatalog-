@@ -41,7 +41,6 @@ services:
       default:
         aliases: [email-db]
 
-  # Migrations em sequência (sem corrida) antes do app subir.
   migrate:
     profiles: [test, like-prod]
     build:
