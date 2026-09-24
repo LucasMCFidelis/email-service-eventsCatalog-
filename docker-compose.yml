@@ -61,7 +61,7 @@ services:
       # test        -> start:dev (NODE_ENV=development, *_DEV, recovery code visível)
       # like-prod   -> start     (NODE_ENV=production,  *_PROD, recovery code oculto)
       START_SCRIPT: ${START_SCRIPT:-start:dev}
-    ports: ["8081:8080"]
+    ports: ["8083:8080"]
     healthcheck:
       test:
         [
@@ -86,6 +86,7 @@ services:
     build:
       context: ${USER_MOCK_GIT:-https://github.com/LucasMCFidelis/collectionTestApiUserService.git#main}
       dockerfile: docker/mock.Dockerfile
+    ports: ["8081:8080"]
     networks:
       default:
         aliases: [user-service]
