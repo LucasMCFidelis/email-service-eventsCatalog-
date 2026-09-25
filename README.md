@@ -6,15 +6,20 @@ Serviço de recuperação de senha (envio e validação de código por e-mail) d
 
 ## 🧩 Estratégia de teste
 
-O EmailService depende de dois pontos externos para funcionar: o **UserService** (para confirmar que o e-mail pertence a um usuário cadastrado) e um **provedor de envio de e-mail** real. Em vez de testar contra esses dois pontos de verdade, a pipeline sobe o **EmailService de verdade** — com banco de dados real via Postgres — e mocka apenas as duas dependências externas:
+O EmailService depende de dois pontos externos para funcionar: o **UserService** (para confirmar que o e-mail pertence a um usuário cadastrado) e um **provedor de envio de e-mail** real. Em vez de testar contra esses dois pontos de verdade, a pipeline sobe o **EmailService de verdade** — com banco de dados real via Postgres, tudo orquestrado pelo [`docker-compose.yml`](docker-compose.yml) — e mocka apenas as duas dependências externas:
 
-- **UserService** → mockado com **WireMock**.
+- **UserService** → mockado pelo serviço `user-service-mock` (WireMock, buildado do repositório de testes).
 - **Envio de e-mail** → mockado internamente via a flag `MOCK_EMAIL=true`, que faz o serviço logar o envio em vez de chamar o provedor real.
 
 Isso garante:
 
 - **Isolamento**: falhas do UserService ou do provedor de e-mail não derrubam o CI do EmailService.
 - **Foco no que importa**: o que é validado é o contrato, a geração/persistência do código de recuperação (no Postgres) e a lógica de expiração — não os mocks.
+
+A estratégia usa dois profiles do Compose:
+
+- **`test`**: fluxo funcional completo, com o EmailService rodando em modo `development` (`recoveryCode` visível na resposta — útil para depurar o fluxo).
+- **`like-prod`**: simula um ambiente de **produção** de verdade (`NODE_ENV=production`), usado para o *smoke de segurança* que garante que o `recoveryCode` **não** é exposto no corpo da resposta nesse modo — o resto do ambiente (banco, mock do UserService) é o mesmo do profile `test`.
 
 Três repositórios sustentam essa estratégia:
 
@@ -28,46 +33,60 @@ O modo mock só é ativado com `MOCK_USER="true"` + header `x-mock-scenario` na 
 
 ---
 
-## ⚙️ Pipelines de CI (GitHub Actions)
+## ⚙️ Pipeline de CI
 
-O serviço usa um workflow reutilizável, [`email-service-base.yml`](.github/workflows/email-service-base.yml), acionado por dois workflows diferentes conforme o objetivo do teste:
+Workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) — roda em push/PR para `main`/`develop`.
 
-| Workflow | Gatilho | `NODE_ENV` | Pasta de testes | Environment |
+Assim como no `auth-service`, toda a orquestração dos testes foi movida para o [`docker-compose.yml`](docker-compose.yml). Aqui ela é dividida em **dois profiles**, executados como jobs separados na mesma pipeline:
+
+| Job | Profile | Comando | `START_SCRIPT` → `NODE_ENV` | `recoveryCode` na resposta? |
 |---|---|---|---|---|
-| [`ci.yml`](.github/workflows/ci.yml) | push/PR em `main`/`develop` | `development` | `recovery` (fluxo completo) | `ci.environment.json` |
-| [`security-smoke.yml`](.github/workflows/security-smoke.yml) | diariamente (cron) ou manual, só se houve commit nas últimas 24h | `production` | `security-smoke` | `production-like.environment.json` |
+| `test` | `test` | `docker compose --profile test up --build --exit-code-from tests-functional` | `start:dev` → `development` (padrão) | ✔️ sim |
+| `security-smoke` | `like-prod` | `docker compose --profile like-prod up --build --exit-code-from tests-security` | `start` → `production` (forçado via env) | ❌ não — é isso que o teste valida |
 
-### Etapas do workflow base
+`db`, `migrate`, `app` e `user-service-mock` pertencem **aos dois profiles** — é literalmente o mesmo ambiente nos dois casos, só muda o `START_SCRIPT` do serviço `app` (que decide o `NODE_ENV`, já que o `cross-env` fixa esse valor dentro do próprio script do `package.json` — um `NODE_ENV` passado por fora não tem efeito) e qual runner de teste sobe ao final. Isso é o que permite ao `like-prod` simular um ambiente de produção de verdade — com `recoveryCode` oculto da resposta, exatamente como aconteceria em produção — sem precisar de uma segunda definição de ambiente.
 
-1. Sobe um container **Postgres** de teste como *service* do job.
-2. Checkout deste repositório, instala dependências (`npm ci`) e builda o serviço (`npm run build`).
-3. Checkout dos repositórios de teste: `collectionTestApiEmailService` (em `api-tests/`) e `collectionTestApiUserService` (em `user-mock/`).
-4. Roda as migrations do Prisma (`npx prisma migrate deploy`) contra o Postgres de teste.
-5. Sobe o **WireMock** (porta `8089`) com os mappings do UserService mockado.
-6. Sobe o **EmailService real**, com `MOCK_USER=true`, `MOCK_EMAIL=true` e apontando para o Postgres de teste e para o WireMock.
-7. Instala o Newman (+ `newman-reporter-htmlextra`) e executa:
-   - a pasta **`functional-smoke`** sempre, como sanity check;
-   - a pasta indicada pelo workflow que chamou (`recovery` no CI, `security-smoke` no smoke diário), passando `emailSecurityTest` como variável vinda do secret `EMAIL_SECURITY_TEST` (usado apenas pelo teste de segurança).
-8. Publica o relatório HTML do Newman como artifact (`relatorio-newman`).
-9. No `ci.yml`, dispara o deploy (via `RENDER_DEPLOY_HOOK_URL`) após os testes passarem.
+### Etapas de cada job
+
+1. Checkout deste repositório.
+2. Sobe o ambiente via Compose, que builda e orquestra:
+   - **`db`**: Postgres de teste (efêmero, `tmpfs`).
+   - **`migrate`**: roda `prisma migrate deploy` contra o `db` e encerra (`service_completed_successfully`).
+   - **`app`**: o EmailService real (mesmo `Dockerfile` de produção, estágio `prod`), com `MOCK_USER=true` e `MOCK_EMAIL=true` sempre ligados — só o `START_SCRIPT` muda entre os dois jobs.
+   - **`user-service-mock`**: builda direto do repositório [`collectionTestApiUserService`](https://github.com/LucasMCFidelis/collectionTestApiUserService) (mesmo mock reaproveitado pelo `auth-service`), exposto na rede como `user-service`.
+   - **`tests-functional`** (job `test`) ou **`tests-security`** (job `security-smoke`): builda direto do repositório [`collectionTestApiEmailService`](https://github.com/LucasMCFidelis/collectionTestApiEmailService), rodando a collection com Newman contra o `app` assim que ele fica *healthy*.
+     - `tests-functional` roda as pastas `functional-smoke` + `recovery`.
+     - `tests-security` roda a pasta `security-smoke`, passando `emailSecurityTest` (vindo do secret `EMAIL_SECURITY_TEST`) como variável do Newman.
+3. `--exit-code-from tests-*` propaga o resultado da collection como código de saída do comando.
+4. Em caso de falha, salva os logs do Compose como artifact.
+5. Publica o relatório HTML do Newman como artifact (`relatorio-newman-functional` / `relatorio-newman-security`), mesmo em caso de falha.
+6. Para e remove containers/volumes (`docker compose --profile <profile> down -v`).
+7. O job `deploy` roda só depois que **`test` e `security-smoke` passam**, em push para `main`, disparando o deploy via `RENDER_DEPLOY_HOOK_URL`.
 
 ### Diagrama do fluxo
 
 ```
-┌─────────────────────┐    x-mock-scenario     ┌───────────────────────┐
-│   Newman (Postman)  │ ─────────────────────> │  EmailService (real)  │
-│  collectionTestApi- │                        │  MOCK_USER=true       │
-│    EmailService     │ <───────────────────── │  MOCK_EMAIL=true      │
-└─────────────────────┘  200/400 + mensagem    └──────┬─────────┬──────┘
-                                                      │         │
-                             GET /users?userEmail=... │         │ INSERT/UPDATE
-                             (com x-mock-scenario)    │         │ recovery_codes
-                                                      ▼         ▼
-                                      ┌──────────────────┐  ┌────────────┐
-                                      │  WireMock (mock  │  │  Postgres  │
-                                      │  do UserService) │  │  (teste)   │
-                                      │  porta 8089      │  └────────────┘
-                                      └──────────────────┘
+docker compose --profile test up --build --exit-code-from tests-functional
+docker compose --profile like-prod up --build --exit-code-from tests-security  (START_SCRIPT=start)
+
+┌──────────────────────────┐  x-mock-scenario   ┌────────────────────────────┐
+│  tests-functional /      │───────────────────>│  app                       │
+│  tests-security (Newman) │                    │  (EmailService real)       │
+│  build: repo             │<───────────────────│  MOCK_USER=true            │
+│  collectionTestApi-      │  200/400 + msg     │  MOCK_EMAIL=true           │
+│  EmailService            │  (sem recoveryCode │  START_SCRIPT: start[:dev] │
+│  depends_on: app         │   se like-prod)    └───────┬───────────┬────────┘
+│  (service_healthy)       │                            │           │
+└──────────────────────────┘    GET /users?userEmail=...│           │ INSERT/UPDATE
+                                 (com x-mock-scenario)  │           | recovery_codes
+                                                        ▼           ▼
+                                  ┌─────────────────────────┐    ┌───────────┐
+                                  │  user-service-mock      │    │  db       │
+                                  │  build: repo            │    │ (Postgres,│
+                                  │  collectionTestApiUser- │    │  tmpfs)   │
+                                  │  Service (WireMock)     │    └───────────┘
+                                  │  alias: user-service    │
+                                  └─────────────────────────┘
 ```
 
 ### O que a pipeline garante
@@ -83,111 +102,67 @@ O serviço usa um workflow reutilizável, [`email-service-base.yml`](.github/wor
 
 ## 🚀 Reproduzindo os testes localmente
 
-Esse passo a passo sobe o EmailService em **modo de desenvolvimento** (`npm run dev`), com um Postgres local, apontando para o UserService mockado (WireMock), e roda a collection de testes contra esse ambiente — usando o environment **`local-mock`**, equivalente ao `ci` mas pensado para execução manual na máquina do desenvolvedor.
+Esse ambiente é o mesmo usado na CI, orquestrado pelo [`docker-compose.yml`](docker-compose.yml) através de dois profiles: `test` (fluxo funcional completo) e `like-prod` (smoke de segurança, simulando produção). Não é mais necessário clonar os repositórios de teste manualmente, nem instalar Postgres/Newman/WireMock na máquina — o Compose builda tudo (EmailService real, mock do UserService e o runner do Newman) a partir das imagens/contextos definidos no arquivo.
 
 ### Pré-requisitos
-- Node.js e npm
-- Docker
-- Newman (`npm install -g newman`)
+- Docker + Docker Compose
 
-### 1. Clone os três repositórios lado a lado
+### 1. Clone este repositório
 
 ```bash
 git clone https://github.com/LucasMCFidelis/email-service-eventsCatalog-.git
-git clone https://github.com/LucasMCFidelis/collectionTestApiEmailService.git
-git clone https://github.com/LucasMCFidelis/collectionTestApiUserService.git
-```
-
-Isso cria três pastas irmãs — os comandos abaixo assumem esse layout (ajuste os caminhos se organizar diferente).
-
-### 2. Suba o Postgres de teste
-
-```bash
-docker run -d --name postgres-email-service -p 5432:5432 \
-  -e POSTGRES_DB=email_test \
-  -e POSTGRES_USER=test \
-  -e POSTGRES_PASSWORD=test \
-  postgres:15
-```
-
-### 3. Suba o UserService mockado (WireMock)
-
-```bash
-docker run -d --name wiremock-user-service -p 8089:8080 \
-  -v "$(pwd)/collectionTestApiUserService/postman/wiremock:/home/wiremock" \
-  wiremock/wiremock
-```
-
-Isso sobe o WireMock na porta `8089`, servindo os *mappings* de `collectionTestApiUserService/postman/wiremock/mappings` — cada arquivo representa um cenário (`SUCCESS_GET_USER`, usuário não encontrado, etc.), acionado pelo header `X-Mock-Scenario` enviado nas requisições de teste.
-
-### 4. Instale as dependências do EmailService
-
-```bash
 cd email-service-eventsCatalog-
-npm install
 ```
 
-### 5. Configure o `.env` para apontar para os mocks
+### 2. (Opcional) Copie o `.env.example` para `.env`
 
 ```bash
 cp .env.example .env
 ```
 
-No `.env` gerado, ajuste (ou confirme) as seguintes variáveis para que o serviço, em modo dev, use o Postgres local e o UserService mockado, sem enviar e-mails de verdade:
+Nada aqui é obrigatório para o `docker compose`: `DATABASE_URL_EMAIL`, `USER_SERVICE_URL_DEV`/`_PROD`, `MOCK_USER` e `MOCK_EMAIL` já vêm fixados no `docker-compose.yml` para o ambiente de teste. O `.env` só é útil para:
 
 ```env
-DATABASE_URL_EMAIL=postgresql://test:test@localhost:5432/email_test
-USER_SERVICE_URL_DEV=http://localhost:8089
-MOCK_USER=true
-MOCK_EMAIL=true
+# Caminho para os repositórios de teste (opcional — só para usar versões locais em vez de puxar do GitHub)
+USER_MOCK_GIT=../collectionTestApiUserService
+API_TESTS_GIT=../collectionTestApiEmailService
+
+# Obrigatória apenas se for rodar o profile like-prod (teste de segurança)
+EMAIL_SECURITY_TEST=seu-email-de-teste@exemplo.com
 ```
 
-- `MOCK_USER=true` habilita o EmailService a repassar o header `x-mock-scenario` das requisições de teste para o UserService — sem essa flag, o header é ignorado.
-- `MOCK_EMAIL=true` faz o serviço apenas logar o envio do e-mail, sem chamar o provedor real — necessário porque `MAIL_SERVER_ENDPOINT`/`API_MAIL_KEY` não são exigidos nesse modo.
-
-### 6. Rode as migrations do Prisma
+### 3. Rode o profile `test` (fluxo funcional completo)
 
 ```bash
-npx prisma migrate deploy
+docker compose --profile test up --build --exit-code-from tests-functional
 ```
 
-### 7. Suba o EmailService em modo dev
+Builda e sobe, na ordem certa: `db` (Postgres efêmero) → `migrate` (`prisma migrate deploy`) → `app` (EmailService real, `START_SCRIPT=start:dev` → `NODE_ENV=development`, `MOCK_USER=true`, `MOCK_EMAIL=true`) e `user-service-mock` (buildado do repositório [`collectionTestApiUserService`](https://github.com/LucasMCFidelis/collectionTestApiUserService)) → `tests-functional` (buildado do repositório [`collectionTestApiEmailService`](https://github.com/LucasMCFidelis/collectionTestApiEmailService)), que roda as pastas `functional-smoke` + `recovery` contra o `app` assim que ele fica saudável. Nesse modo o `recoveryCode` **aparece** na resposta (útil para inspecionar o fluxo manualmente).
+
+`--exit-code-from tests-functional` faz o comando terminar com o código de saída da collection.
+
+### 4. Rode o profile `like-prod` (smoke de segurança, simulando produção)
 
 ```bash
-npm run dev
+START_SCRIPT=start docker compose --profile like-prod up --build --exit-code-from tests-security
 ```
 
-O `npm run dev` sobe o serviço com hot-reload (`tsx --watch`), lendo as variáveis do `.env`, disponível em `http://localhost:3000`. Deixe esse terminal aberto rodando o serviço.
-
-### 8. Rode a collection com Newman, em outro terminal
-
-```bash
-cd collectionTestApiEmailService
-newman run postman/collections/email-service.postman_collection.json \
-  -e postman/environments/local-mock.environment.json \
-  --folder functional-smoke
-
-newman run postman/collections/email-service.postman_collection.json \
-  -e postman/environments/local-mock.environment.json \
-  --folder recovery
+No **PowerShell (Windows)**:
+```powershell
+$env:START_SCRIPT = "start"
+docker compose --profile like-prod up --build --exit-code-from tests-security
 ```
 
-O `local-mock.environment.json` já vem configurado com `useMock=true`, `email_service_url=http://localhost:3000/emails` e `user_service_url=http://localhost:8089/users` — a mesma configuração usada no `ci.environment.json`, mas destinada à execução manual local em vez do pipeline de CI.
+`db`, `migrate`, `app` e `user-service-mock` são exatamente os mesmos serviços do profile `test` (ambos os profiles compartilham essas definições no Compose) — o que muda é só o `START_SCRIPT` do `app`, que passa a ser `start` em vez de `start:dev`. Isso força `NODE_ENV=production` dentro do serviço (o `cross-env` fixa esse valor no próprio script do `package.json`, então um `NODE_ENV` passado por fora não teria efeito), e é exatamente essa mudança que faz o EmailService parar de incluir o `recoveryCode` no corpo da resposta — simulando o comportamento real de produção. O runner que sobe ao final é o `tests-security`, rodando só a pasta `security-smoke`, que valida justamente essa ausência do `recoveryCode` na resposta; ele espera a variável `emailSecurityTest` (defina `EMAIL_SECURITY_TEST` no `.env` ou exporte antes do comando).
 
-Se quiser rodar também a pasta `security-smoke`, ela depende da variável `emailSecurityTest` (não usada pela pasta `recovery`):
+### 5. Veja os relatórios
 
-```bash
-newman run postman/collections/email-service.postman_collection.json \
-  -e postman/environments/local-mock.environment.json \
-  --folder security-smoke \
-  --env-var "emailSecurityTest=seu-email-de-teste@exemplo.com"
-```
+Os relatórios HTML do Newman são gerados em `./reports/functional.html` (profile `test`) e `./reports/security.html` (profile `like-prod`), montados como volume pelos serviços `tests-functional`/`tests-security`, e podem ser abertos direto no navegador.
 
-### 9. Encerre o ambiente
+### 6. Encerre e limpe o ambiente
 
 ```bash
-# Ctrl+C no terminal do EmailService
-docker rm -f wiremock-user-service postgres-email-service
+docker compose --profile test --profile like-prod down -v
 ```
 
 Detalhes de cada cenário de teste (envio, validação e smoke) estão documentados no README do repositório [`collectionTestApiEmailService`](https://github.com/LucasMCFidelis/collectionTestApiEmailService).
@@ -199,8 +174,10 @@ Detalhes de cada cenário de teste (envio, validação e smoke) estão documenta
 | Variável | Obrigatória | Descrição |
 |---|---|---|
 | `DATABASE_URL_EMAIL` | ✔️ | String de conexão do Postgres usado para persistir os códigos de recuperação. |
-| `NODE_ENV` | ✔️ | `development` ou `production` — define o sufixo de URL usado (`_DEV`/`_PROD`) e se o `recoveryCode` é exposto na resposta. |
-| `USER_SERVICE_URL_DEV` | ✔️ (em CI e em dev com mock) | Aponta para o WireMock em testes. |
+| `START_SCRIPT` | opcional (Docker) | `start:dev` (padrão, `NODE_ENV=development`) ou `start` (`NODE_ENV=production`). Decide qual script do `package.json` roda — e é esse script, via `cross-env`, quem fixa o `NODE_ENV`; um `NODE_ENV` passado por fora não tem efeito. |
+| `NODE_ENV` | ✔️ (fixado pelo script, não por fora) | `development` ou `production` — define o sufixo de URL usado (`_DEV`/`_PROD`) e se o `recoveryCode` é exposto na resposta. |
+| `USER_SERVICE_URL_DEV` / `USER_SERVICE_URL_PROD` | ✔️ (em CI e em dev com mock) | Aponta para o mock (WireMock/`user-service-mock`) em testes. |
 | `MOCK_USER` | opcional | `"true"` habilita o repasse do `x-mock-scenario` (só usado em teste/CI/dev com mock). |
 | `MOCK_EMAIL` | opcional | `"true"` faz o serviço simular o envio do e-mail em vez de chamar o provedor real (só usado em teste/CI/dev com mock). |
 | `MAIL_SERVER_ENDPOINT` / `API_MAIL_KEY` | obrigatórias fora do modo mock | Credenciais do provedor real de envio de e-mail. |
+| `EMAIL_SECURITY_TEST` | ✔️ (só para o profile `like-prod`) | E-mail de teste passado ao Newman (`emailSecurityTest`) para o teste de segurança. |
