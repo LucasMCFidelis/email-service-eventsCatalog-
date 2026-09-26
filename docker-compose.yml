@@ -1,8 +1,8 @@
 name: email-service
 
 # Modos (via profiles):
-#   test     : docker compose --profile test up --build --exit-code-from tests-functional
-#   like-prod: START_SCRIPT=start docker compose --profile like-prod up --build --exit-code-from tests-security
+#   test     : docker compose --profile test up --build
+#   like-prod: START_SCRIPT=start docker compose --profile like-prod up --build
 #
 # db, migrate, app e user-service-mock pertencem aos DOIS profiles (profiles: [test, like-prod]):
 # são o mesmo ambiente de teste em ambos os casos. Só muda o START_SCRIPT (via variável de shell,

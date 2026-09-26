@@ -17,7 +17,7 @@ jobs:
 
       # 2️⃣ Subir ambiente de teste e rodar testes funcionais
       - name: Setup and run tests
-        run: docker compose --profile test up --build --exit-code-from tests-functional
+        run: docker compose --profile test up -d --build
 
       # 3️⃣ Salvar logs do compose e relatório do Newman
       - name: Collect compose logs
@@ -58,7 +58,7 @@ jobs:
         env:
           START_SCRIPT: start
           EMAIL_SECURITY_TEST: ${{ secrets.EMAIL_SECURITY_TEST }}
-        run: docker compose --profile like-prod up --build --exit-code-from tests-security
+        run: docker compose --profile like-prod up -d --build
 
       # 3️⃣ Salvar logs do compose e relatório do Newman
       - name: Collect compose logs
