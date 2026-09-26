@@ -96,8 +96,6 @@ services:
     build:
       context: ${API_TESTS_GIT:-https://github.com/LucasMCFidelis/collectionTestApiEmailService.git#main}
       dockerfile: docker/tests-runner.Dockerfile
-    volumes:
-      - ./reports:/etc/newman/reports
     command:
       - run
       - postman/collections/email-service.postman_collection.json
@@ -111,6 +109,8 @@ services:
       - cli,htmlextra
       - --reporter-htmlextra-export
       - reports/functional.html
+    volumes:
+      - ./reports:/etc/newman/reports
     depends_on:
       app: { condition: service_healthy }
 
@@ -119,8 +119,6 @@ services:
     build:
       context: ${API_TESTS_GIT:-https://github.com/LucasMCFidelis/collectionTestApiEmailService.git#main}
       dockerfile: docker/tests-runner.Dockerfile
-    volumes:
-      - ./reports:/etc/newman/reports
     command:
       - run
       - postman/collections/email-service.postman_collection.json
@@ -134,5 +132,7 @@ services:
       - cli,htmlextra
       - --reporter-htmlextra-export
       - reports/security.html
+    volumes:
+      - ./reports:/etc/newman/reports
     depends_on:
       app: { condition: service_healthy }

@@ -19,18 +19,10 @@ jobs:
       - name: Setup and run tests
         run: docker compose --profile test up -d --build
 
-      # 3️⃣ Salvar logs do compose e relatório do Newman
+      # 3️⃣ Salvar logs do compose em caso de falha
       - name: Collect compose logs
         if: failure()
         run: docker compose --profile test logs --no-color > compose-test.log
-
-      - name: Save Newman report (functional)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: relatorio-newman-functional
-          path: reports/functional.html
-          if-no-files-found: warn
 
       - name: Save compose logs (test)
         if: failure()
@@ -44,6 +36,15 @@ jobs:
         if: always()
         run: |
           docker compose --profile test down -v
+
+      # 5️⃣ Salvar relatório do Newman
+      - name: Save Newman report (functional)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorio-newman-functional
+          path: reports/functional.html
+          if-no-files-found: warn
 
   security-smoke:
     environment: eventsCatalog
@@ -65,14 +66,6 @@ jobs:
         if: failure()
         run: docker compose --profile like-prod logs --no-color > compose-like-prod.log
 
-      - name: Save Newman report (security)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: relatorio-newman-security
-          path: reports/security.html
-          if-no-files-found: warn
-
       - name: Save compose logs (like-prod)
         if: failure()
         uses: actions/upload-artifact@v4
@@ -85,6 +78,15 @@ jobs:
         if: always()
         run: |
           docker compose --profile like-prod down -v
+
+      # 5️⃣ Salvar relatório do Newman
+      - name: Save Newman report (security)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorio-newman-security
+          path: reports/security.html
+          if-no-files-found: warn
 
   deploy:
     needs: [test, security-smoke]
