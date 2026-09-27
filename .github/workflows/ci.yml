@@ -15,11 +15,16 @@ jobs:
       - name: Checkout emailService
         uses: actions/checkout@v4
 
-      # 2️⃣ Subir ambiente de teste e rodar testes funcionais
+      # 2️⃣ Subir ambiente de teste
       - name: Setup and run tests
-        run: docker compose --profile test up -d --build
+        run: docker compose --profile test up -d --build --scale tests-functional=0
 
-      # 3️⃣ Salvar logs do compose em caso de falha
+      # 3️⃣ Executar testes Postman/Newman
+      - name: Run Newman tests-functional
+        run: |
+          docker compose --profile test run --rm tests-functional
+
+      # 4️⃣ Salvar logs do compose em caso de falha
       - name: Collect compose logs
         if: failure()
         run: docker compose --profile test logs --no-color > compose-test.log
@@ -31,13 +36,13 @@ jobs:
           name: compose-logs-test
           path: compose-test.log
 
-      # 4️⃣ Parar e remover containers
+      # 5️⃣ Parar e remover containers
       - name: Stop and remove containers
         if: always()
         run: |
           docker compose --profile test down -v
 
-      # 5️⃣ Salvar relatório do Newman
+      # 6️⃣ Salvar relatório do Newman
       - name: Save Newman report (functional)
         if: always()
         uses: actions/upload-artifact@v4
@@ -54,14 +59,19 @@ jobs:
       - name: Checkout emailService
         uses: actions/checkout@v4
 
-      # 2️⃣ Subir ambiente simulando prod e rodar testes de segurança
+      # 2️⃣ Subir ambiente simulando prod
       - name: Security smoke (compose --profile like-prod)
         env:
           START_SCRIPT: start
           EMAIL_SECURITY_TEST: ${{ secrets.EMAIL_SECURITY_TEST }}
-        run: docker compose --profile like-prod up -d --build
+        run: docker compose --profile like-prod up -d --build --scale tests-security=0
 
-      # 3️⃣ Salvar logs do compose e relatório do Newman
+      # 3️⃣ Executar testes Postman/Newman
+      - name: Run Newman tests-security
+        run: |
+          docker compose --profile like-prod run --rm tests-security
+
+      # 4️⃣ Salvar logs do compose em caso de falha
       - name: Collect compose logs
         if: failure()
         run: docker compose --profile like-prod logs --no-color > compose-like-prod.log
@@ -73,13 +83,13 @@ jobs:
           name: compose-logs-like-prod
           path: compose-like-prod.log
 
-      # 4️⃣ Parar e remover containers
+      # 5️⃣ Parar e remover containers
       - name: Stop and remove containers
         if: always()
         run: |
           docker compose --profile like-prod down -v
 
-      # 5️⃣ Salvar relatório do Newman
+      # 6️⃣ Salvar relatório do Newman
       - name: Save Newman report (security)
         if: always()
         uses: actions/upload-artifact@v4
