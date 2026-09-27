@@ -126,8 +126,6 @@ services:
       - postman/environments/ci.environment.json
       - --folder
       - security-smoke
-      - --env-var
-      - emailSecurityTest=${EMAIL_SECURITY_TEST:-}
       - --reporters
       - cli,htmlextra
       - --reporter-htmlextra-export

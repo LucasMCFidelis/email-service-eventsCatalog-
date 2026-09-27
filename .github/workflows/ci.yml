@@ -8,7 +8,6 @@ on:
 
 jobs:
   test:
-    environment: eventsCatalog
     runs-on: ubuntu-latest
     steps:
       # 1️⃣ Checkout emailService
@@ -52,8 +51,9 @@ jobs:
           if-no-files-found: warn
 
   security-smoke:
-    environment: eventsCatalog
     runs-on: ubuntu-latest
+    env:
+      START_SCRIPT: start
     steps:
       # 1️⃣ Checkout emailService
       - name: Checkout emailService
@@ -61,9 +61,6 @@ jobs:
 
       # 2️⃣ Subir ambiente simulando prod
       - name: Security smoke (compose --profile like-prod)
-        env:
-          START_SCRIPT: start
-          EMAIL_SECURITY_TEST: ${{ secrets.EMAIL_SECURITY_TEST }}
         run: docker compose --profile like-prod up -d --build --scale tests-security=0
 
       # 3️⃣ Executar testes Postman/Newman
